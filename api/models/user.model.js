@@ -37,6 +37,12 @@ const UserSchema = new Schema(
   { timestamps: true }
 );
 
+UserSchema.methods.isEnoughBalanceToWithdraw = function (amount) {
+  const user = this;
+
+  return user.balance > amount;
+};
+
 const User = mongoose.model("User", UserSchema);
 
 module.exports = User;
