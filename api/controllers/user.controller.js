@@ -53,8 +53,41 @@ async function increaseUserBalance(req, res, next) {
   }
 }
 
+async function decreaseUserBalance(req, res, next) {
+  try {
+    const id = req.params.id;
+
+    const { amount } = req.body;
+
+    const user = await User.findById(id);
+
+    if (!user) {
+      throw new ApiError(
+        httpStatus.NOT_FOUND,
+        "Пользователя с таким id не найдено"
+      );
+    }
+
+    if (!user.isEnoughBalanceToWithdraw(amount)) {
+      throw new ApiError(
+        httpStatus.BAD_REQUEST,
+        "Недостаточно средств на балансе для снятия баллов со счета"
+      );
+    }
+
+    user.balance -= amount;
+
+    await user.save();
+
+    res.status(httpStatus.OK).send();
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getUsers,
   getUser,
   increaseUserBalance,
+  decreaseUserBalance,
 };

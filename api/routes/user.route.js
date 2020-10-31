@@ -1,7 +1,11 @@
 const express = require("express");
 const router = express.Router();
 
-const { INCREASE_USER_BALANCE, GET_USER } = require("../helpers/validation");
+const {
+  INCREASE_USER_BALANCE,
+  DECREASE_USER_BALANCE,
+  GET_USER,
+} = require("../helpers/validation");
 const { validate } = require("../helpers/middlewares");
 
 const userController = require("../controllers/user.controller");
@@ -13,6 +17,11 @@ router.post(
   "/:id/balance/increase",
   validate(INCREASE_USER_BALANCE),
   userController.increaseUserBalance
+);
+router.post(
+  "/:id/balance/decrease",
+  validate(DECREASE_USER_BALANCE),
+  userController.decreaseUserBalance
 );
 
 module.exports = router;

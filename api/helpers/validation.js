@@ -24,7 +24,17 @@ const INCREASE_USER_BALANCE = {
   }),
 };
 
+const DECREASE_USER_BALANCE = {
+  params: Joi.object().keys({
+    id: Joi.string().custom(objectId),
+  }),
+  body: Joi.object().keys({
+    amount: Joi.number().required().greater(0),
+  }),
+};
+
 module.exports = {
   INCREASE_USER_BALANCE,
+  DECREASE_USER_BALANCE,
   GET_USER,
 };
