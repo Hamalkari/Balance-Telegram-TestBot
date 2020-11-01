@@ -4,14 +4,13 @@ const Schema = mongoose.Schema;
 
 const UserSchema = new Schema(
   {
-    id: {
+    telegram_id: {
       type: Number,
-      unique: true,
       required: true,
+      unique: true,
     },
     is_bot: {
       type: Boolean,
-      required: true,
     },
     first_name: {
       type: String,
@@ -23,8 +22,6 @@ const UserSchema = new Schema(
     },
     username: {
       type: String,
-      required: true,
-      unique: true,
     },
     language_code: {
       type: String,
@@ -40,7 +37,7 @@ const UserSchema = new Schema(
 UserSchema.methods.isEnoughBalanceToWithdraw = function (amount) {
   const user = this;
 
-  return user.balance > amount;
+  return user.balance >= amount;
 };
 
 const User = mongoose.model("User", UserSchema);
