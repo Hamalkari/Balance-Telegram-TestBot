@@ -16,6 +16,7 @@
     "joi": "^17.3.0",
     "mongoose": "^5.10.11",
     "morgan": "~1.9.1",
+    "plural-ru": "^2.0.2",
     "telegraf": "^3.38.0"
   },
   "devDependencies": {
