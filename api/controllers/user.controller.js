@@ -1,89 +1,105 @@
+const plural = require("plural-ru");
 const httpStatus = require("http-status");
 const ApiError = require("../helpers/ApiError");
-const User = require("../models/user.model");
+const User = require("../../models/user.model");
+const catchAsync = require("../helpers/catchAsync");
 
-async function getUsers(req, res, next) {
-  try {
-    const users = await User.find({});
+const bot = require("../../telegram_bot/index");
 
-    res.status(httpStatus.OK).send(users);
-  } catch (error) {
-    next(error);
+const getUsers = catchAsync(async (req, res) => {
+  const users = await User.find({});
+
+  res.status(httpStatus.OK).send(users);
+});
+
+const getUser = catchAsync(async (req, res) => {
+  const { telegramId } = req.params;
+
+  const user = await User.findOne({ telegram_id: telegramId });
+
+  if (!user) {
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "Пользователя с таким id не найдено"
+    );
   }
-}
 
-async function getUser(req, res, next) {
-  try {
-    const user = await User.findById(req.params.id);
+  res.status(httpStatus.OK).send(user);
+});
 
-    if (!user) {
-      throw new ApiError(
-        httpStatus.NOT_FOUND,
-        "Пользователя с таким id не найдено"
-      );
-    }
+const increaseUserBalance = catchAsync(async (req, res) => {
+  const { telegramId } = req.params;
+  const { amount } = req.body;
 
-    res.status(httpStatus.OK).send(user);
-  } catch (error) {
-    next(error);
+  const user = await User.findOne({ telegram_id: telegramId });
+
+  if (!user) {
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "Пользователя с таким id не найдено"
+    );
   }
-}
 
-async function increaseUserBalance(req, res, next) {
-  try {
-    const id = req.params.id;
-    const { amount } = req.body;
+  user.balance += amount;
 
-    const user = await User.findById(id);
+  await user.save();
 
-    if (!user) {
-      throw new ApiError(
-        httpStatus.NOT_FOUND,
-        "Пользователя с таким id не найдено"
-      );
+  bot.telegram.sendMessage(
+    telegramId,
+    `Ваш баланс был пополнен на *${plural(
+      amount,
+      "%d балл",
+      "%d балла",
+      "%d баллов"
+    )}*`,
+    {
+      parse_mode: "Markdown",
     }
+  );
 
-    user.balance += amount;
+  res.status(httpStatus.OK).send();
+});
 
-    await user.save();
+const decreaseUserBalance = catchAsync(async (req, res) => {
+  const { telegramId } = req.params;
 
-    res.status(httpStatus.OK).send();
-  } catch (error) {
-    next(error);
+  const { amount } = req.body;
+
+  const user = await User.findOne({ telegram_id: telegramId });
+
+  if (!user) {
+    throw new ApiError(
+      httpStatus.NOT_FOUND,
+      "Пользователя с таким id не найдено"
+    );
   }
-}
 
-async function decreaseUserBalance(req, res, next) {
-  try {
-    const id = req.params.id;
-
-    const { amount } = req.body;
-
-    const user = await User.findById(id);
-
-    if (!user) {
-      throw new ApiError(
-        httpStatus.NOT_FOUND,
-        "Пользователя с таким id не найдено"
-      );
-    }
-
-    if (!user.isEnoughBalanceToWithdraw(amount)) {
-      throw new ApiError(
-        httpStatus.BAD_REQUEST,
-        "Недостаточно средств на балансе для снятия баллов со счета"
-      );
-    }
-
-    user.balance -= amount;
-
-    await user.save();
-
-    res.status(httpStatus.OK).send();
-  } catch (error) {
-    next(error);
+  if (!user.isEnoughBalanceToWithdraw(amount)) {
+    throw new ApiError(
+      httpStatus.BAD_REQUEST,
+      "Недостаточно средств на балансе для снятия баллов со счета"
+    );
   }
-}
+
+  user.balance -= amount;
+
+  await user.save();
+
+  bot.telegram.sendMessage(
+    telegramId,
+    `Ваш баланс был уменьшен на *${plural(
+      amount,
+      "%d балл",
+      "%d балла",
+      "%d баллов"
+    )}*`,
+    {
+      parse_mode: "Markdown",
+    }
+  );
+
+  res.status(httpStatus.OK).send();
+});
 
 module.exports = {
   getUsers,
