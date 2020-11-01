@@ -1,44 +1,66 @@
-const Scene = require("telegraf/scenes/base");
+const WizardScene = require("telegraf/scenes/wizard");
+const Markup = require("telegraf/markup");
 
-const User = require("../../api/models/user.model");
+const User = require("../../models/user.model");
 
-const registerScene = new Scene("register");
+const menu = Markup.keyboard(["Проверить баланс", "Снять баллы со счета"])
+  .resize()
+  .extra();
 
-registerScene.enter(async (ctx) => {
-  const { id } = ctx.message.from;
+const scene = new WizardScene(
+  "register",
+  async (ctx) => {
+    const { id } = ctx.message.from;
 
-  const isUserExists = await User.exists({ id });
+    await User.findOneAndDelete({ telegram_id: id });
 
-  if (isUserExists) return ctx.scene.leave();
+    await ctx.reply(
+      "Добро пожаловать ✋\nКакого ваше Имя ?",
+      Markup.removeKeyboard().extra()
+    );
 
-  await ctx.reply(
-    "Приветсвую вас.\nДля регистрации введите ваше Имя и Фамилию (через пробел):"
-  );
-});
+    return ctx.wizard.next();
+  },
+  async (ctx) => {
+    const text = ctx.message.text;
 
-registerScene.on("text", async (ctx) => {
-  const fullName = ctx.message.text.trim();
+    if (!text) return ctx.reply("Вы ввели не текст !");
 
-  const [firstName, lastName] = fullName.split(" ");
+    ctx.wizard.state.firstName = text.trim();
 
-  if (!firstName || !lastName) {
-    return ctx.reply("Пожалуйста введите Имя и Фамилию в верном формате: ");
+    await ctx.reply("Какая у вас фамилия ?");
+
+    return ctx.wizard.next();
+  },
+  async (ctx) => {
+    const text = ctx.message.text;
+
+    if (!text) return ctx.reply("Вы ввели не текст !");
+
+    ctx.wizard.state.lastName = text.trim();
+
+    const { firstName, lastName } = ctx.wizard.state;
+    const telegramInfo = ctx.message.from;
+
+    const userDoc = {
+      telegram_id: telegramInfo["id"],
+      is_bot: telegramInfo["is_bot"],
+      first_name: firstName,
+      last_name: lastName,
+      username: telegramInfo["username"],
+      language_code: telegramInfo["language_code"],
+    };
+
+    const user = new User(userDoc);
+    await user.save();
+
+    await ctx.replyWithMarkdown(
+      `Регистрация завершена !\n\nВаше имя: *${firstName}*\nВаша фамилия: *${lastName}*`,
+      menu
+    );
+
+    return ctx.scene.leave();
   }
-  const from = ctx.message.from;
+);
 
-  const userDoc = {
-    ...from,
-    first_name: firstName,
-    last_name: lastName,
-  };
-
-  const user = new User(userDoc);
-
-  await user.save();
-
-  ctx.reply("Вы успешно зарегистрированы !");
-
-  ctx.scene.leave();
-});
-
-module.exports = registerScene;
+module.exports = scene;
